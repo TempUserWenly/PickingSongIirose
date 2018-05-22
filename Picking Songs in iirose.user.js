@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Picking Songs in iirose
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.1.1
 // @description  Very neat, very fast, hidden functions!!
 // @author       You
 // @match        https://iirose.com/messages.html
@@ -239,9 +239,11 @@
     //this method types and submit a string in the typearea
     function inputString(str){
         var inputBox = document.getElementById("moveinput");
+        var originText = inputBox.value;
         var submit = document.getElementsByClassName("moveinputSendBtn")[0];
         inputBox.value = str;
         submit.click();
+        inputBox.value = originText;
     }
 
     //this method add a script to html so that u can use the script in console
