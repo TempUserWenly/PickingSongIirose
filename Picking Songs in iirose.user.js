@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Picking Songs in iirose
 // @namespace    http://tampermonkey.net/
-// @version      1.1.1
+// @version      1.12
 // @description  Very neat, very fast, hidden functions!!
 // @author       You
 // @match        https://iirose.com/messages.html
@@ -87,7 +87,7 @@
                 //get song name and artist name
                 var songName = document.title.split("——")[0];
                 var artistName = document.getElementsByClassName("artist_info fl")[0].getElementsByTagName("strong")[0].innerHTML;
-                var message = songName+" "+artistName;
+                var message = songName+"|"+artistName;
 
                 //set the "song" value with the above info
                 GM.setValue("song", message);
@@ -147,14 +147,8 @@
     }
 
     //pick a song with the sring
-    function pickingSong(str){
-        //var frameDocument = document.getElementById("mainFrame").contentDocument;
-        /*
-        var inputBox = frameDocument.getElementById("moveinput");
-        var submit = frameDocument.getElementsByClassName("moveinputSendBtn")[0];
-        inputBox.value = "@"+str;
-        submit.click();
-        */
+    function pickingSong(songInfo){
+        var str = songInfo.replace("|"," ");
         inputString("@"+str);
 
         //this timer checks whether the search results have loaded
@@ -204,15 +198,16 @@
                         }
                     }
                 }
+                //if find nothing
                 else {
 
                     //这里有bug!!
                     clearInterval(timer2);
                     document.getElementsByClassName("footerItemBgShape_pointer")[0].onclick.apply();
-                    var strList=str.split(" ");
+                    var strList=songInfo.split("|");
                     if (strList.length>1){
                         inputString("点歌失败，因为搜索不到 "+str+"。尝试模糊搜索 "+strList[0]);
-                        pickingSong(strList[0]);
+                        setTimeout(function(){pickingSong(strList[0]);}, 1000)
                     }
                     else{
                         inputString("模糊搜索也失败了。");
@@ -260,7 +255,7 @@
         str = await GM.getValue("entry", "我踩着七彩祥云来了~")
         if(str.length>13){
             console.log("智障吗，搞那么长？");
-            str="我踩着七彩祥云来了~";
+            str="本人专属跑马灯入场";
             GM.setValue("entry",str);
         }
         var rainbow = ["C30002", "C30040", "C3007D", "C300BB", "8D00C3", "4F00C3", "1200C3", "002AC3", "0068C3", "00A5C3", "00C3A2", "00C365", "00C327", "15C300", "52C300", "90C300", "C3B800", "C37A00", "C33D00", "C30000", "C30022", "C30060", "C3009D", "AA00C3", "6D00C3", "2F00C3", "000DC3", "004AC3", "0088C3", "00C3C0", "00C382", "00C345", "00C307", "35C300", "72C300", "B0C300", "C39800", "C35A00", "C31D00", "C3001F"];
