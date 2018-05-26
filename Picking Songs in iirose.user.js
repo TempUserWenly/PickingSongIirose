@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Picking Songs in iirose
 // @namespace    http://tampermonkey.net/
-// @version      1.12
+// @version      1.13
 // @description  Very neat, very fast, hidden functions!!
 // @author       You
 // @match        https://iirose.com/messages.html
@@ -19,6 +19,7 @@
     GM.setValue("song", -5);//default to be -5 means null
     var autoPicking = true;
     var entryEffect = false;
+    var autoSpamming = false;
 
     //for xiami radio page
     if (url.search("xiami.com/radio")>=0){
@@ -105,43 +106,48 @@
 
     async function iirose(){
         //this timer checks if the window has loaded. Do checking every 3 seconds.
-        var timer = setInterval(function () {
-            if(document.getElementById("moveinput")!=null){
-                clearInterval(timer);
+        if (autoPicking){
+            var timer = setInterval(function () {
+                if(document.getElementById("moveinput")!=null){
+                    clearInterval(timer);
 
-                //add entryIirose() to console
-                var scriptText='function entryIirose(str){ if(str.length>14){console.log("智障吗，搞那么长？");str="本人专属跑马灯入场";} var rainbow=["C30002", "C30040", "C3007D", "C300BB", "8D00C3", "4F00C3", "1200C3", "002AC3", "0068C3", "00A5C3", "00C3A2", "00C365", "00C327", "15C300", "52C300", "90C300", "C3B800", "C37A00", "C33D00", "C30000", "C30022", "C30060", "C3009D", "AA00C3", "6D00C3", "2F00C3", "000DC3", "004AC3", "0088C3", "00C3C0", "00C382", "00C345", "00C307", "35C300", "72C300", "B0C300", "C39800", "C35A00", "C31D00", "C3001F"];var offset=Math.floor(Math.random()*rainbow.length);var text=str.split("");for(var i=0;i<text.length;i++){if(offset+i<rainbow.length){console.log(\'%c \'+rainbow[offset+i],\'color: #\'+rainbow[offset+i]);socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i]+\'"}\')} else{socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i-rainbow.length]+\'"}\');console.log(\'%c \'+rainbow[offset+i], \'color: #\'+rainbow[offset+i]);}}}';
-                addScript(scriptText);
+                    //current song info
+                    var tempSong=-5;
 
-                //whether show rainbow effect
-                if(entryEffect){
-                    entryIirose(null);
+                    //this timer checks if there is a new message from xiami
+                    var pickTimer = setInterval(async function () {
+
+                        //get value from xiami. If not changed, do nothing and wait
+                        var realSong = await GM.getValue("song", -5);
+                        if(realSong!=tempSong){
+
+                            //changed! pick the real song here
+                            console.log("successfully recieve message "+realSong);
+                            await pickingSong(realSong);
+
+                            //update tempSong
+                            tempSong = realSong;
+                        }
+
+                        //console.log("one more loop in iirose");
+                    }, 3000);
                 }
 
-                //current song info
-                var tempSong=-5;
+            }, 3000);
+        }
+        //add entryIirose() to console
+        var scriptText='function entryIirose(str){ if(str.length>14){console.log("智障吗，搞那么长？");str="艰苦奋斗严肃活泼";} var rainbow=["C30002", "C30040", "C3007D", "C300BB", "8D00C3", "4F00C3", "1200C3", "002AC3", "0068C3", "00A5C3", "00C3A2", "00C365", "00C327", "15C300", "52C300", "90C300", "C3B800", "C37A00", "C33D00", "C30000", "C30022", "C30060", "C3009D", "AA00C3", "6D00C3", "2F00C3", "000DC3", "004AC3", "0088C3", "00C3C0", "00C382", "00C345", "00C307", "35C300", "72C300", "B0C300", "C39800", "C35A00", "C31D00", "C3001F"];var offset=Math.floor(Math.random()*rainbow.length);var text=str.split("");for(var i=0;i<text.length;i++){if(offset+i<rainbow.length){console.log(\'%c \'+rainbow[offset+i],\'color: #\'+rainbow[offset+i]);socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i]+\'"}\')} else{socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i-rainbow.length]+\'"}\');console.log(\'%c \'+rainbow[offset+i], \'color: #\'+rainbow[offset+i]);}}}';
+        addScript(scriptText);
 
-                //this timer checks if there is a new message from xiami
-                var pickTimer = setInterval(async function () {
-
-                    //get value from xiami. If not changed, do nothing and wait
-                    var realSong = await GM.getValue("song", -5);
-                    if(realSong!=tempSong){
-
-                        //changed! pick the real song here
-                        console.log("successfully recieve message "+realSong);
-                        await pickingSong(realSong);
-
-                        //update tempSong
-                        tempSong = realSong;
-                    }
-
-                    //console.log("one more loop in iirose");
-                }, 3000);
-            }
-
-        }, 3000);
-
+        //whether show rainbow effect
+        if(entryEffect){
+            entryIirose(null);
+        }
+        if (autoSpamming){
+            setInterval(function(){
+                entryIirose("自动刷屏123456789");
+            },200000);
+        }
 
         return;
     }
@@ -211,6 +217,7 @@
                     }
                     else{
                         inputString("模糊搜索也失败了。");
+                        location.reload();
                     }
 
                 }
