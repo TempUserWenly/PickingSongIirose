@@ -5,7 +5,8 @@
 // @description  Very neat, very fast, hidden functions!!
 // @author       You
 // @match        https://iirose.com/messages.html
-//@match        https://www.xiami.com/radio/play/*
+// @match        https://www.xiami.com/radio/play/*
+// @match        https://www.xiami.com/collect/*
 // @grant       GM.setValue
 // @grant       GM.getValue
 // ==/UserScript==
@@ -18,8 +19,9 @@
     var url = window.location.href;
     GM.setValue("song", -5);//default to be -5 means null
     var autoPicking = true;
-    var entryEffect = false;
-    var autoSpamming = false;
+    //save a shuffled song list and current pointer
+    var shuffledSongList = [];
+    var shufflePointer = 0;
 
     //for xiami radio page
     if (url.search("xiami.com/radio")>=0){
@@ -36,12 +38,166 @@
     else if (url.search("iirose.com")>=0){
         iirose();
     }
+    else if (url.search("xiami.com/collect")>=0){
+        xiamiCollection();
+    }
     else {
         console.log("Failed to match the website!");
     }
 
+    //a quick shuffle algorithm
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+    //simple sleep function
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    //xiami Collection starts
+    function xiamiCollection(){
+        //generate a button
+
+        console.log("51");
+
+        var parentDiv = document.getElementById("element_r");
+        var newNode = document.createElement ('div');
+        newNode.innerHTML='<form style="font-size:16px">'
+            +'<br><br>给蔷薇花园点歌！<br><br>'
+            +'从：<input type="number" name="startNum" max="50" style="border: 2px solid red;font-size: 16px;"> <br><br>到：<input type="number" name="endNum" style="border: 2px solid red;font-size: 16px;"><br><br>'
+            +'点：<input type="number" name="pickNum" min="1" max="10" style="border: 2px solid red;font-size: 16px;"> 首<br><br>'
+            +'<input type="checkbox" name="random" value="random" style="border: 2px solid red;font-size: 16px;">   随机播放<br><br>'
+            +'<input id="pick!" type="button" style="background-color: #4CAF50;font-size: 16px;text-align:center;" value="  点歌！ "> <br><br>'
+            +'<input id="pickFive!" type="button" style="background-color: #4CAF50;font-size: 16px;text-align:center;" value="  点五首歌！ "> </form>';
+        parentDiv.appendChild (newNode);
+        document.getElementById("pick!").addEventListener("click", pickCollection);
+        document.getElementById("pickFive!").addEventListener("click", pickCollectionFive);
+        /*
+            <form>
+            从：
+            <input type="number" name="startNum" min="1" max="5">
+            到：
+            <input type="number" name="endNum" min="1" max="5">
+            <br>
+            点
+            <input type="number" name="pickNum" min="1" max="5">
+            首
+            <br>
+            <input type="checkbox" name="random" value="random"> 随机播放<br>
+            <input type="submit">
+            </form>
+            */
+
+    }
+    //
+    async function pickCollection(){
+        //for xiami collection
+        console.log("84");
+        var songList = getSongList();
+        console.log("song size is "+songList.length);
+        var pickList = [];
+        var startP = document.getElementsByName("startNum")[0].value;
+        var endP = document.getElementsByName("endNum")[0].value;
+        var range = document.getElementsByName("pickNum")[0].value;
+        var random = document.getElementsByName("random")[0].checked;
+        console.log("new89"+startP+endP+range+random);
+        if (isNaN(startP)){ startP=0;
+                          }
+        if (isNaN(endP)){ endP=50;
+                        }
+        if (isNaN(range)){ range=5;
+                         }
+        startP = parseInt(startP);endP = parseInt(endP);range = parseInt(range);
+        if (range>endP-startP){startP=1;endP=50;
+                              }
+        pickList = songList.slice(startP, endP);
+
+        if (random){
+            shuffleArray(pickList);
+        }
+
+        var song;
+        var count = 1;
+        await sleep(2000);
+        for (song of pickList){
+            if (count>range){break;}
+            song.replace( /\s\s+/g, ' ' );
+            GM.setValue("song", song);
+            console.log("sended "+song);
+            count += 1;
+            await sleep(2000);
+        }
+
+    }
+
+    async function pickCollectionFive(){
+        //for xiami collection
+        if (shuffledSongList.length==0){
+            shuffledSongList = getSongList();
+            shuffleArray(shuffledSongList);
+        }
+
+        console.log("song size is "+shuffledSongList.length);
+        var pickList = [];
+        var range = 5;
+        console.log("ShufflePointer (before):"+shufflePointer);
+        if (shufflePointer+range+1>shuffledSongList.length){
+            pickList=shuffledSongList.slice(shufflePointer).concat(shuffledSongList.slice(0, shufflePointer+range-shuffledSongList.length));
+            shufflePointer=shufflePointer+range-shuffledSongList.length;
+        }
+        else {
+            pickList = shuffledSongList.slice(shufflePointer, shufflePointer+range);
+            shufflePointer=shufflePointer+range;
+        }
+        console.log("ShufflePointer (after):"+shufflePointer);
+
+        var song;
+        var count = 1;
+        await sleep(2000);
+        for (song of pickList){
+            song.replace( /\s\s+/g, ' ' );
+            GM.setValue("song", song);
+            console.log("sended "+song);
+
+            await sleep(2000);
+        }
 
 
+    }
+    function getSongList(){
+        var list = document.getElementsByClassName("song_name");
+        var listSize = list.length;
+        var tempNode;
+        var songList = [];
+        for (tempNode of list){
+            var songNameList=tempNode.innerText.split("-—")[0].split(" "); // like ["Return", "Of", "The", "Mack", "(...", ""]
+            var tempSoneNameNode;
+            var songName="";
+            for (tempSoneNameNode of songNameList){
+                if (tempSoneNameNode.search(/\.\.\./)>=0){
+                    //console.log("99"+tempSoneNameNode);
+                    break;
+                }
+                tempSoneNameNode=tempSoneNameNode.replace('(','').replace(')','');
+                songName += tempSoneNameNode;
+                songName += ' ';
+            }
+            var artisitList=tempNode.innerText.split("-—")[1].split(";");//like [" Dale Castell", "Tamia"]
+            var lastWord = artisitList[artisitList.length-1].split(' ').slice(-1)[0];
+            if (lastWord=='MV'){
+                //console.log('before: '+artisitList);
+                artisitList[artisitList.length-1]=artisitList[artisitList.length-1].split(' ').slice(0,-1).join(' ');
+                //console.log('after: '+artisitList);
+            }
+            var artisitName=artisitList.join(' ');
+            songList.push(songName+'|'+artisitName);
+            //console.log(songName+'|'+artisitName);
+        }
+        return songList;
+    }
 
 
 
@@ -130,13 +286,13 @@
                         }
 
                         //console.log("one more loop in iirose");
-                    }, 3000);
+                    }, 300);
                 }
 
             }, 3000);
         }
         //add entryIirose() to console
-        var scriptText='function entryIirose(str){ if(str.length>14){console.log("智障吗，搞那么长？");str="艰苦奋斗严肃活泼";} var rainbow=["C30002", "C30040", "C3007D", "C300BB", "8D00C3", "4F00C3", "1200C3", "002AC3", "0068C3", "00A5C3", "00C3A2", "00C365", "00C327", "15C300", "52C300", "90C300", "C3B800", "C37A00", "C33D00", "C30000", "C30022", "C30060", "C3009D", "AA00C3", "6D00C3", "2F00C3", "000DC3", "004AC3", "0088C3", "00C3C0", "00C382", "00C345", "00C307", "35C300", "72C300", "B0C300", "C39800", "C35A00", "C31D00", "C3001F"];var offset=Math.floor(Math.random()*rainbow.length);var text=str.split("");for(var i=0;i<text.length;i++){if(offset+i<rainbow.length){console.log(\'%c \'+rainbow[offset+i],\'color: #\'+rainbow[offset+i]);socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i]+\'"}\')} else{socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i-rainbow.length]+\'"}\');console.log(\'%c \'+rainbow[offset+i], \'color: #\'+rainbow[offset+i]);}}}';
+        /*var scriptText='function entryIirose(str){ if(str.length>14){console.log("智障吗，搞那么长？");str="艰苦奋斗严肃活泼";} var rainbow=["C30002", "C30040", "C3007D", "C300BB", "8D00C3", "4F00C3", "1200C3", "002AC3", "0068C3", "00A5C3", "00C3A2", "00C365", "00C327", "15C300", "52C300", "90C300", "C3B800", "C37A00", "C33D00", "C30000", "C30022", "C30060", "C3009D", "AA00C3", "6D00C3", "2F00C3", "000DC3", "004AC3", "0088C3", "00C3C0", "00C382", "00C345", "00C307", "35C300", "72C300", "B0C300", "C39800", "C35A00", "C31D00", "C3001F"];var offset=Math.floor(Math.random()*rainbow.length);var text=str.split("");for(var i=0;i<text.length;i++){if(offset+i<rainbow.length){console.log(\'%c \'+rainbow[offset+i],\'color: #\'+rainbow[offset+i]);socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i]+\'"}\')} else{socket.send(\'{"m": "\'+text[i]+\'", "mc": "\'+rainbow[offset+i-rainbow.length]+\'"}\');console.log(\'%c \'+rainbow[offset+i], \'color: #\'+rainbow[offset+i]);}}}';
         addScript(scriptText);
 
         //whether show rainbow effect
@@ -146,9 +302,9 @@
         if (autoSpamming){
             setInterval(function(){
                 entryIirose("自动刷屏123456789");
-            },200000);
+            },300000);
         }
-
+*/
         return;
     }
 
@@ -228,7 +384,7 @@
 
             }
             //
-        }, 100);
+        }, 800);
 
         //var newSize = songlist.length;//for future use
 
@@ -256,7 +412,7 @@
     }
 
     //show a rainbow when enter a room. Very annoying!
-
+    //expired
     async function entryIirose(str){
         if(str !=null){GM.setValue("entry",str);}
         str = await GM.getValue("entry", "我踩着七彩祥云来了~")
